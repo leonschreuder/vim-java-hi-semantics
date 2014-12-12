@@ -95,6 +95,18 @@ for singleMatch in matches
 	"echo "m: " . s:getMethodName(singleMatch)
 
 	"echo s:getParameters(s:getInsideBraces(singleMatch))
+
+	let paramsList = s:getParameters(s:getInsideBraces(singleMatch))
+	for param in paramsList
+		execute 'syn keyword javaParams "' . param . '" contained'
+	endfor
+
+	let methodName = s:getMethodName(singleMatch)
+
+	execute 'syn region completeMethod start=+^\(\t\| \{8\}\).\{-}"' . methodName . '(.\{-})\s\{-}{+  end=+}+ contains=javaScopeDecl,javaType,javaStorageClass,@javaClasses,javaParams'
+
+	hi def link singleMethod		Statement
+
 endfor
 
 
@@ -139,10 +151,10 @@ endfu
 "hi def link completeMethod		Statement
 
 
-syntax keyword singleMethod    sourceView    contained
-syn region completeMethod  start=+^\(\t\| \{8\}\).\{-}performTransitionNext(.\{-})\s\{-}{+  end=+}+ contains=javaScopeDecl,javaType,javaStorageClass,@javaClasses,singleMethod
-hi def link singleMethod		Statement
+" ALSO WORKS: I'm on a roll today
+"syntax keyword singleMethod    sourceView    contained
+"syn region completeMethod  start=+^\(\t\| \{8\}\).\{-}performTransitionNext(.\{-})\s\{-}{+  end=+}+ contains=javaScopeDecl,javaType,javaStorageClass,@javaClasses,singleMethod
+"hi def link singleMethod		Statement
 
 
 
-"TODO: Put this in a repo on github and import it through the plugin manager.
