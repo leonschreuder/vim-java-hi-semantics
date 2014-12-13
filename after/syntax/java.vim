@@ -68,18 +68,18 @@ hi def link javaFields		Function
 " Directly loads the individual parameters per method, but only gets the last
 " one form multiple parameters
 "--------------------------------------------------------------------------------
-let p=[]
-silent! %s/\v(private|public|protected)\s(\S{-}\s)*\w{-}\((\w{-}\s(\w{-}),=)\)\zs/\=add(p,submatch(4))[1:0]/g
+"let p=[]
+"silent! %s/\v(private|public|protected)\s(\S{-}\s)*\w{-}\((\w{-}\s(\w{-}),=)\)\zs/\=add(p,submatch(4))[1:0]/g
 
-for s:var in p
-	if s:var != ""
-		execute 'syn match javaParams "' . s:var . '"'
-	endif
-endfor
+"for s:var in p
+	"if s:var != ""
+		"execute 'syn match javaParams "' . s:var . '"'
+	"endif
+"endfor
 
 
-syn cluster javaTop add=javaParams
-hi def link javaParams		Statement
+"syn cluster javaTop add=javaParams
+"hi def link javaParams		Statement
 " This works, but for the whole file. Research how I can search this within a method definition, and group it inside the method
 
 
@@ -88,25 +88,33 @@ hi def link javaParams		Statement
 " Getting the method names and the paramater names
 "--------------------------------------------------------------------------------
 let matches=[]
-silent! %s/\v(private|public|protected)\s(\S{-}\s)*(\w{-}\((.{-})\))\zs/\=add(p,submatch(3))[1:0]/g
-"echo p
+silent! %s/\v(private|public|protected)\s(\S{-}\s)*(\w{-}\((.{-})\))\zs/\=add(matches,submatch(3))[1:0]/g
+"echo matches
 
+let i = 0
 for singleMatch in matches
-	"echo "m: " . s:getMethodName(singleMatch)
-
-	"echo s:getParameters(s:getInsideBraces(singleMatch))
+	"Because every method needs to highlight only their own fields, every
+	"match needs a unique name (like javaParams1)
 
 	let paramsList = s:getParameters(s:getInsideBraces(singleMatch))
 	for param in paramsList
-		execute 'syn keyword javaParams "' . param . '" contained'
+		execute 'syn match javaParams' . i . ' "\<' . param . '\>" contained'
 	endfor
 
+	"DEBUG This uses a specified field and searches for a specified method
+	"syntax keyword singleField    context    contained
+	"syn region completeMethod  start=+^\(\t\| \{8\}\).\{-}getResoureIdForImage(.\{-})\s\{-}{+  end=+}+ contains=javaScopeDecl,javaType,javaStorageClass,@javaClasses,singleField
+	"hi def link singleField		Statement
+
 	let methodName = s:getMethodName(singleMatch)
+	execute 'syn region completeMethod  start=+^\(\t\| \{' . &tabstop . '\}\).\{-}' . methodName . '(.\{-})\s\{-}{+  end=+}+ contains=javaScopeDecl,javaType,javaStorageClass,@javaClasses,javaParams' . i . ',javaFields'
 
-	execute 'syn region completeMethod start=+^\(\t\| \{8\}\).\{-}"' . methodName . '(.\{-})\s\{-}{+  end=+}+ contains=javaScopeDecl,javaType,javaStorageClass,@javaClasses,javaParams'
+	"DEBUG highlighs the entire method
+	"hi def link completeMethod		Statement 
+	hi def link javaParams		Statement
+	execute 'hi def link javaParams' . i . '		Statement'
 
-	hi def link singleMethod		Statement
-
+	let i += 1
 endfor
 
 
