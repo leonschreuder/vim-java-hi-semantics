@@ -84,38 +84,6 @@ hi def link javaFields		Function
 
 
 
-"--------------------------------------------------------------------------------
-" Getting the method names and the paramater names
-"--------------------------------------------------------------------------------
-let matches=[]
-silent! %s/\v(private|public|protected)\s(\S{-}\s)*(\w{-}\((.{-})\))\zs/\=add(matches,submatch(3))[1:0]/g
-"echo matches
-
-let i = 0
-for singleMatch in matches
-	"Because every method needs to highlight only their own fields, every
-	"match needs a unique name (like javaParams1)
-
-	let paramsList = s:getParameters(s:getInsideBraces(singleMatch))
-	for param in paramsList
-		execute 'syn match javaParams' . i . ' "\<' . param . '\>" contained'
-	endfor
-
-	"DEBUG This uses a specified field and searches for a specified method
-	"syntax keyword singleField    context    contained
-	"syn region completeMethod  start=+^\(\t\| \{8\}\).\{-}getResoureIdForImage(.\{-})\s\{-}{+  end=+}+ contains=javaScopeDecl,javaType,javaStorageClass,@javaClasses,singleField
-	"hi def link singleField		Statement
-
-	let methodName = s:getMethodName(singleMatch)
-	execute 'syn region completeMethod  start=+^\(\t\| \{' . &tabstop . '\}\).\{-}' . methodName . '(.\{-})\s\{-}{+  end=+}+ contains=javaScopeDecl,javaType,javaStorageClass,@javaClasses,javaParams' . i . ',javaFields'
-
-	"DEBUG highlighs the entire method
-	"hi def link completeMethod		Statement 
-	hi def link javaParams		Statement
-	execute 'hi def link javaParams' . i . '		Statement'
-
-	let i += 1
-endfor
 
 
 fu! s:getMethodName(methodString)
@@ -145,6 +113,40 @@ endfu
 fu! s:getParamNameFromParamString(paramString)
 		return split(a:paramString, '\v\s=\w{-}\s')[0]
 endfu
+
+"--------------------------------------------------------------------------------
+" Getting the method names and the paramater names
+"--------------------------------------------------------------------------------
+let matches=[]
+"silent! %s/\v(private|public|protected)\s(\w{-}\s)*(\w{-}\((.{-})\))\zs/\=add(matches,submatch(3))[1:0]/g
+silent! %s/\v(private|public|protected)\s([_$a-zA-Z<>]{-}\s)*(\w{-}\((.{-})\))\zs/\=add(matches,submatch(3))[1:0]/g
+
+let i = 0
+for singleMatch in matches
+	"Because every method needs to highlight only their own fields, every
+	"match needs a unique name (like javaParams1)
+
+	let paramsList = s:getParameters(s:getInsideBraces(singleMatch))
+	echo paramsList
+	for param in paramsList
+		execute 'syn match javaParams' . i . ' "\<' . param . '\>" contained'
+	endfor
+
+	"DEBUG This uses a specified field and searches for a specified method
+	"syntax keyword singleField    context    contained
+	"syn region completeMethod  start=+^\(\t\| \{8\}\).\{-}getResoureIdForImage(.\{-})\s\{-}{+  end=+}+ contains=javaScopeDecl,javaType,javaStorageClass,@javaClasses,singleField
+	"hi def link singleField		Statement
+
+	let methodName = s:getMethodName(singleMatch)
+	execute 'syn region completeMethod  start=+^\v(\t| {' . &tabstop . '}).{-}' . methodName . '\(.{-}\).{-}\{+  end=+}+ contains=javaScopeDecl,javaType,javaStorageClass,@javaClasses,javaParams' . i . ',javaFields'
+
+	"DEBUG highlighs the entire method
+	"hi def link completeMethod		Statement 
+	hi def link javaParams		Statement
+	execute 'hi def link javaParams' . i . '		Statement'
+
+	let i += 1
+endfor
 
 "--------------------------------------------------------------------------------
 " Have to find a way to get the a complete method body including the paramaters
