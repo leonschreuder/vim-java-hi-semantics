@@ -7,12 +7,21 @@
 " tried out. It is just like this rambling description, only worse.
 " You might want to wait a bit before you try it out, till it gets more
 " stable...
+"
+" JAVA2 I'm trying to replace the standard java highlighting here
 
 "TODO:
 "– In an interface the last item is also highlighted   BUG
 "– Fields inside a method that has a parameter with the same name, are
 "  overwritten and highlighted as a parameter. Try to exclude this behavior when
 "  it is prepended by 'this.'
+
+" don't use standard HiLink, it will not work with included syntax files
+if version < 508
+  command! -nargs=+ JavaHiLink hi link <args>
+else
+  command! -nargs=+ JavaHiLink hi def link <args>
+endif
 
 
 "--------------------------------------------------------------------------------
@@ -24,7 +33,7 @@ let fieldNamesList=[]
 silent! %s/\v(private|public|protected)\s(\S{-}\s)*(\w{-})\s\=\zs/\=add(fieldNamesList,submatch(3))[1:0]/g
 
 " Matches field definitions without a value (no equals sign)
-silent! %s/\v(private|public|protected)\s(\S{-}\s)*(\w{-});\zs/\=add(fieldNamesList,submatch(3))[1:0]/g
+silent! %s/\v(private|public|protected)\s([a-zA-Z0-9_]{-}\s)*(\w{-});\zs/\=add(fieldNamesList,submatch(3))[1:0]/g
 
 " Adds every found fieldName to the 'javaFields' match group
 for fieldName in fieldNamesList
@@ -122,6 +131,33 @@ for methodWithParams in methodWithParamsList
 	let i += 1
 endfor
 
+
+"--------------------------------------------------------------------------------
+" Normal syntax highlighting (from java.vim)
+"--------------------------------------------------------------------------------
+
+" Comments
+syn keyword javaTodo		 contained TODO FIXME XXX
+
+syn region  javaComment		 start="/\*"  end="\*/" contains=javaTodo,@Spell
+syn match   javaLineComment	 "//.*" contains=javaTodo,@Spell
+
+syn cluster javaTop add=javaComment,javaLineComment
+
+JavaHiLink javaComment		Comment
+JavaHiLink javaTodo			Todo
+
+
+" String
+syn match   javaSpecialChar	 contained "\\\([4-9]\d\|[0-3]\d\d\|[\"\\'ntbrf]\|u\x\{4\}\)"
+syn region  javaString		start=+"+ end=+"+ end=+$+ contains=javaSpecialChar,javaSpecialError,@Spell
+syn cluster javaTop add=javaString
+
+JavaHiLink javaSpecialChar		javaString
+
+
+
+delcommand JavaHiLink
 
 "--------------------------------------------------------------------------------
 " Reference
