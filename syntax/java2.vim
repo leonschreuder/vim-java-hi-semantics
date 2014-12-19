@@ -38,7 +38,7 @@ silent! %s/\v(private|public|protected)\s([a-zA-Z0-9_]{-}\s)*(\w{-});\zs/\=add(f
 " Adds every found fieldName to the 'javaFields' match group
 for fieldName in fieldNamesList
 	if fieldName != ""
-		execute 'syn match javaFields "' . fieldName . '"'
+		execute 'syn match javaFields "\<' . fieldName . '\>"'
 	endif
 endfor
 
