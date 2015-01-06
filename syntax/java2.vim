@@ -30,10 +30,13 @@ endif
 
 let fieldNamesList=[]
 " Matches field definitions with a value (with an equals sign)
-silent! %s/\v(private|public|protected)\s(\S{-}\s)*(\w{-})\s\=\zs/\=add(fieldNamesList,submatch(3))[1:0]/g
+silent! %s/\v(private|public|protected)\s(\S{-}\s)*(\S{-})\s\=\zs/\=add(fieldNamesList,submatch(3))[1:0]/g
+"echo fieldNamesList
+
 
 " Matches field definitions without a value (no equals sign)
-silent! %s/\v(private|public|protected)\s([a-zA-Z0-9_]{-}\s)*(\w{-});\zs/\=add(fieldNamesList,submatch(3))[1:0]/g
+silent! %s/\v(private|public|protected)\s([a-zA-Z0-9_\.\[\]]{-}\s)*(\S{-});\zs/\=add(fieldNamesList,submatch(3))[1:0]/g
+"echo fieldNamesList
 
 " Adds every found fieldName to the 'javaFields' match group
 for fieldName in fieldNamesList
@@ -83,7 +86,7 @@ fu! s:getParameterNames(stringWithParameters)
 endfu
 
 fu! s:getParamNameFromParamString(paramString)
-		return split(a:paramString, '\v\s=\w{-}\s')[0]
+		return split(a:paramString, '\v\s=\S{-}\s')[0]
 endfu
 
 
@@ -91,7 +94,7 @@ endfu
 " Highlighting method parameter names
 "--------------------------------------------------------------------------------
 let methodWithParamsList=[]
-silent! %s/\v(private|public|protected)\s([_$a-zA-Z<>]{-}\s)*(\w{-}\((.{-})\))\zs/\=add(methodWithParamsList,submatch(3))[1:0]/g
+silent! %s/\v(private|public|protected)\s([_$a-zA-Z<>\[\]]{-}\s)*(\w{-}\((.{-})\))\zs/\=add(methodWithParamsList,submatch(3))[1:0]/g
 
 let i = 0
 for methodWithParams in methodWithParamsList
@@ -101,6 +104,8 @@ for methodWithParams in methodWithParamsList
 	let currentJavaParams = 'javaParams' . i
 
 	let paramsList = s:getParameterNames(s:getInsideBraces(methodWithParams))
+	"echo paramsList
+	
 
 	"Add every parameter to the matchGroup. Note: The group can only be contained
 	"inside another group (which will be the method)
@@ -130,6 +135,9 @@ for methodWithParams in methodWithParamsList
 
 	let i += 1
 endfor
+
+
+
 
 
 "--------------------------------------------------------------------------------
