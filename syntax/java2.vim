@@ -102,36 +102,36 @@ for methodWithParams in methodWithParamsList
 	"every match needs a unique match group (like javaParams1). That's what
 	"the 'i' is for.
 	let currentJavaParams = 'javaParams' . i
+	let currentCompleteMethod = 'completeMethod' . i
 
 	let paramsList = s:getParameterNames(s:getInsideBraces(methodWithParams))
 	"echo paramsList
 	
 
-	"Add every parameter to the matchGroup. Note: The group can only be contained
+	"Add every parameter to the matchGroup. Note: The group should only be contained
 	"inside another group (which will be the method)
 	for param in paramsList
-		"execute 'syn match javaParams' . i . ' "\(this\)\@!' . param . '" contained' "<< Doesn't work. Why not?
-		execute 'syn match ' . currentJavaParams . ' "\<' . param . '\>" contained'
+		"Highlights the parameter, unless it is preceded by 'this.'
+		execute 'syn match ' . currentJavaParams . ' "\(this\.\)\@<!\<' . param . '\>" contained'
 	endfor
 
 	let methodName = s:getMethodName(methodWithParams)
 
 	"This creates a region for this method only. The region starts with the
 	"method name (which is indented one length) and ends with the closing }
-	"execute 'syn region completeMethod  start=+^\v(\t| {' . &tabstop . '}).{-}' . methodName . '\(.{-}\).{-}\{+  end=+}+ contains=javaScopeDecl,javaType,javaStorageClass,@javaClasses,@javaTop,' . currentJavaParams . ',javaFields'
-	execute 'syn region completeMethod  start=+^\v(\t| {' . &tabstop . '}).{-}' . methodName . '\(.{-}\).{-}\{+  end=+}+ contains=@javaTop,' . currentJavaParams . ',javaFields'
+	"The intentation is used to match the start&end and is exactly one indent
+	execute 'syn region '.currentCompleteMethod.'  start=+^\v(\t| {' . &tabstop . '}).{-}' . methodName . '\(.{-}\).{-}\{+  end=+^\v(\t| {' . &tabstop . '})}+ contains=@javaTop,' . currentJavaParams . ',javaFields'
 
 	"DEBUG this highlighs the entire method-region for debugging
-	"hi def link completeMethod		Statement 
+	"hi def link completeMethod1		Statement 
 
 	" Highlight the javaParams as a 'Statement' Group. This is yellow with the
 	" solarised color scheme
 	execute 'hi def link ' . currentJavaParams . '		Statement'
 
+	" DELETE ME Highlights keyword in entire file
 	" add highlighting inside the javaTop cluster
-	"syn cluster javaTop add=javaParams
-	"syn cluster javaTop add=completeMethod
-	execute 'syn cluster javaTop add=' . currentJavaParams
+	"execute 'syn cluster javaTop add=' . currentJavaParams
 
 	let i += 1
 endfor
