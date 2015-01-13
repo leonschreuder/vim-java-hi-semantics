@@ -35,7 +35,8 @@ silent! %s/\v(private|public|protected)\s(\S{-}\s)*(\S{-})\s\=\zs/\=add(fieldNam
 
 
 " Matches field definitions without a value (no equals sign)
-silent! %s/\v(private|public|protected)\s([a-zA-Z0-9_\.\[\]]{-}\s)*(\S{-});\zs/\=add(fieldNamesList,submatch(3))[1:0]/g
+" Every value is specified, as not to match lines that DO contain an equals sign...
+silent! %s/\v(private|public|protected)\s([a-zA-Z0-9_\.\[\]<>]{-}\s)*(\S{-});\zs/\=add(fieldNamesList,submatch(3))[1:0]/g
 "echo fieldNamesList
 
 " Adds every found fieldName to the 'javaFields' match group
