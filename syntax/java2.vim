@@ -24,6 +24,8 @@ else
 endif
 
 
+let s:preRunWindowState = winsaveview()
+
 "--------------------------------------------------------------------------------
 " Highlighting field names
 "--------------------------------------------------------------------------------
@@ -167,6 +169,9 @@ JavaHiLink javaSpecialChar		javaString
 
 
 delcommand JavaHiLink
+call winrestview(s:preRunWindowState)
+
+
 
 "--------------------------------------------------------------------------------
 " Reference
