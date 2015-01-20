@@ -29,6 +29,30 @@ let s:preRunWindowState = winsaveview()
 "--------------------------------------------------------------------------------
 " Highlighting field names
 "--------------------------------------------------------------------------------
+function! PythonTester()
+python << EOF
+import re
+import vim
+
+cb = vim.current.buffer
+
+allResults = []
+for line in cb:
+	scopeDecl = '(?:private|public)'
+	className = '(?:\S[^\s]*)'
+	result = re.search( scopeDecl +'\s'+ className +'\s'+ '(\S[^\s|;]*);', line)
+	if result:
+		allResults.append(result.group(1))
+		print result.group(1)
+
+print allResults
+for result in allResults:
+	vim.command( 'syn match javaFields "\<' + result + '\>"')
+
+EOF
+endfunction
+
+call PythonTester()
 
 let fieldNamesList=[]
 " Matches field definitions with a value (with an equals sign)
@@ -44,7 +68,7 @@ silent! %s/\v(private|public|protected)\s([a-zA-Z0-9_\.\[\]<>]{-}\s)*(\S{-});\zs
 " Adds every found fieldName to the 'javaFields' match group
 for fieldName in fieldNamesList
 	if fieldName != ""
-		execute 'syn match javaFields "\<' . fieldName . '\>"'
+		"execute 'syn match javaFields "\<' . fieldName . '\>"'
 	endif
 endfor
 
