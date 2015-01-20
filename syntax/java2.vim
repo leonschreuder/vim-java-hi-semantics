@@ -29,48 +29,92 @@ let s:preRunWindowState = winsaveview()
 "--------------------------------------------------------------------------------
 " Highlighting field names
 "--------------------------------------------------------------------------------
-function! PythonTester()
+function! HighlightFields()
 python << EOF
 import re
 import vim
 
 cb = vim.current.buffer
 
+
+##This part successfully finds open and closing tags
+
+#staringLine = 0
+#endingLine = 0
+#
+#count = 0
+#
+#for i, line in enumerate(cb):
+#	oldCount = count
+#	openBrackets = re.findall('{', line)
+#	if openBrackets:
+#		count = count + len(openBrackets)
+#		print "{ count:", count
+#
+#	closeBrackets = re.findall('}', line)
+#	if closeBrackets:
+#		count = count - len(closeBrackets)
+#		print "} count:", count
+#
+#	if count > oldCount and oldCount == 0:
+#		staringLine = i
+#		print "startingLine: ", i
+#
+#	if count < oldCount and oldCount == 1:
+#		endingLine = i
+#		print "endingLine: ", i
+
+
+
+
+
+classLine = 0
+for i, line in enumerate(cb):
+	result = re.search('.*class', line)
+	if result and result.group():
+		print 'inside'
+		classLine = i
+		break
+
+
 allResults = []
-for line in cb:
-	scopeDecl = '(?:private|public)'
-	className = '(?:\S[^\s]*)'
-	result = re.search( scopeDecl +'\s'+ className +'\s'+ '(\S[^\s|;]*);', line)
+for line in cb[classLine:]:
+
+	result = re.search('''
+			(?:private|public|protected)\s # Scope decleration
+			(?:\S[^\s]*){1,4}\s			   # up to 4 words
+			(\S[^\s|;]*)				   # a word (captured)
+			(?:\s=.*?[^;])?				# optional a space and an equals followd by anything
+			;							# a line-end character
+		''', line, re.VERBOSE)
 	if result:
 		allResults.append(result.group(1))
-		print result.group(1)
 
-print allResults
 for result in allResults:
 	vim.command( 'syn match javaFields "\<' + result + '\>"')
 
 EOF
 endfunction
 
-call PythonTester()
+call HighlightFields()
 
-let fieldNamesList=[]
+"let fieldNamesList=[]
 " Matches field definitions with a value (with an equals sign)
-silent! %s/\v(private|public|protected)\s(\S{-}\s)*(\S{-})\s\=\zs/\=add(fieldNamesList,submatch(3))[1:0]/g
+"silent! %s/\v(private|public|protected)\s(\S{-}\s)*(\S{-})\s\=\zs/\=add(fieldNamesList,submatch(3))[1:0]/g
 "echo fieldNamesList
 
 
 " Matches field definitions without a value (no equals sign)
 " Every value is specified, as not to match lines that DO contain an equals sign...
-silent! %s/\v(private|public|protected)\s([a-zA-Z0-9_\.\[\]<>]{-}\s)*(\S{-});\zs/\=add(fieldNamesList,submatch(3))[1:0]/g
+"silent! %s/\v(private|public|protected)\s([a-zA-Z0-9_\.\[\]<>]{-}\s)*(\S{-});\zs/\=add(fieldNamesList,submatch(3))[1:0]/g
 "echo fieldNamesList
 
 " Adds every found fieldName to the 'javaFields' match group
-for fieldName in fieldNamesList
-	if fieldName != ""
-		"execute 'syn match javaFields "\<' . fieldName . '\>"'
-	endif
-endfor
+"for fieldName in fieldNamesList
+	"if fieldName != ""
+		""execute 'syn match javaFields "\<' . fieldName . '\>"'
+	"endif
+"endfor
 
 " add highlighting inside the javaTop cluster
 syn cluster javaTop add=javaFields
