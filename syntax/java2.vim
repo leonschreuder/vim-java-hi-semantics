@@ -39,46 +39,42 @@ cb = vim.current.buffer
 
 ##This part successfully finds open and closing tags
 
-#staringLine = 0
-#endingLine = 0
-#
-#count = 0
-#
-#for i, line in enumerate(cb):
-#	oldCount = count
-#	openBrackets = re.findall('{', line)
-#	if openBrackets:
-#		count = count + len(openBrackets)
-#		print "{ count:", count
-#
-#	closeBrackets = re.findall('}', line)
-#	if closeBrackets:
-#		count = count - len(closeBrackets)
-#		print "} count:", count
-#
-#	if count > oldCount and oldCount == 0:
-#		staringLine = i
-#		print "startingLine: ", i
-#
-#	if count < oldCount and oldCount == 1:
-#		endingLine = i
-#		print "endingLine: ", i
+classStart = 0
+classEnd = 0
+
+count = 0
+
+for i, line in enumerate(cb):
+	oldCount = count
+	openBrackets = re.findall('{', line)
+	if openBrackets:
+		count = count + len(openBrackets)
+		#print "{ count:", count
+
+	closeBrackets = re.findall('}', line)
+	if closeBrackets:
+		count = count - len(closeBrackets)
+		#print "} count:", count
+
+	if count > oldCount and oldCount == 0:
+		classStart = i
+		#print "startingLine: ", i
+
+	if count < oldCount and oldCount == 1:
+		classEnd = i
+		#print "classEnd: ", i
 
 
 
-
-
-classLine = 0
 for i, line in enumerate(cb):
 	result = re.search('.*class', line)
 	if result and result.group():
-		print 'inside'
 		classLine = i
 		break
 
 
 allResults = []
-for line in cb[classLine:]:
+for line in cb[classStart:classEnd]:
 
 	result = re.search('''
 			(?:private|public|protected)\s # Scope decleration
