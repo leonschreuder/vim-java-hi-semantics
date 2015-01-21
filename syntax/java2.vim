@@ -40,29 +40,29 @@ cb = vim.current.buffer
 ##This part successfully finds open and closing tags
 
 classStart = 0
-classEnd = 0
+classEnd = len(cb)
 
 count = 0
 
-for i, line in enumerate(cb):
-	oldCount = count
-	openBrackets = re.findall('{', line)
-	if openBrackets:
-		count = count + len(openBrackets)
-		#print "{ count:", count
-
-	closeBrackets = re.findall('}', line)
-	if closeBrackets:
-		count = count - len(closeBrackets)
-		#print "} count:", count
-
-	if count > oldCount and oldCount == 0:
-		classStart = i
-		#print "startingLine: ", i
-
-	if count < oldCount and oldCount == 1:
-		classEnd = i
-		#print "classEnd: ", i
+#for i, line in enumerate(cb):
+#	oldCount = count
+#	openBrackets = re.findall('(?!//.*){', line)
+#	if openBrackets:
+#		count = count + len(openBrackets)
+#		#print "{ count:", count
+#
+#	closeBrackets = re.findall('(?!//.*)}', line)
+#	if closeBrackets:
+#		count = count - len(closeBrackets)
+#		#print "} count:", count
+#
+#	if count > oldCount and oldCount == 0:
+#		classStart = i
+#		print "startingLine: ", i
+#
+#	if count < oldCount and oldCount == 1:
+#		classEnd = i
+#		print "classEnd: ", i
 
 
 
@@ -74,14 +74,15 @@ for i, line in enumerate(cb):
 
 
 allResults = []
-for line in cb[classStart:classEnd]:
+#for line in cb[classStart:classEnd]:
+for line in cb:
 
 	result = re.search('''
 			(?:private|public|protected)\s # Scope decleration
-			(?:\S[^\s]*){1,4}\s			   # up to 4 words
-			(\S[^\s|;]*)				   # a word (captured)
-			(?:\s=.*?[^;])?				# optional a space and an equals followd by anything
-			;							# a line-end character
+			(?:\S*?[^\s]\s)+?		   # up to 4 words
+			(\S*?[^\s|;])				   # a word (captured)
+			(?:\s=|;)				# optional a space and an equals followd by anything
+										# a line-end character
 		''', line, re.VERBOSE)
 	if result:
 		allResults.append(result.group(1))
@@ -160,6 +161,50 @@ endfu
 "--------------------------------------------------------------------------------
 " Highlighting method parameter names
 "--------------------------------------------------------------------------------
+function! HighlightParams()
+python << EOF
+import re
+import vim
+
+cb = vim.current.buffer
+methods = []
+parametersForMethod = {}
+for line in cb:
+	#silent! %s/\v(private|public|protected)\s([_$a-zA-Z<>\[\]]{-}\s)*(\w{-}\((.{-})\))\zs/\=add(methodWithParamsList,submatch(3))[1:0]/g
+
+	#(?:_?[A-Z]\S*?\s			# class name
+	#(\S*),\s?					# parameterName
+	#)*?
+	result = re.search(r'''
+			(?:private|public|protected)\s # Scope decleration
+			(?:\S*?[^\s]\s)+?		   # up to 4 words
+			(\S*?)\(				   # method name
+			(.*?)\)				   	   # inbetween the ()
+		''', line, re.VERBOSE)
+	if result:
+		methods.append(result.group(1))
+
+		params = re.findall(r'''
+					.*?\s.*?,			# class name
+								# parameterName
+		''', result.group(2), re.VERBOSE);
+
+
+		print "params: ", params
+
+
+#for result in allResults:
+#vim.command( 'syn match javaFields "\<' + result + '\>"')
+
+
+EOF
+endfunction
+
+"call HighlightParams()
+
+
+
+
 let methodWithParamsList=[]
 silent! %s/\v(private|public|protected)\s([_$a-zA-Z<>\[\]]{-}\s)*(\w{-}\((.{-})\))\zs/\=add(methodWithParamsList,submatch(3))[1:0]/g
 
