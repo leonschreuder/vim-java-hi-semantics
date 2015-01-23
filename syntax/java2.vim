@@ -34,10 +34,9 @@ python << EOF
 import re
 import vim
 
+
 cb = vim.current.buffer
 
-
-##This part successfully finds open and closing tags
 
 classStart = 0
 classEnd = len(cb)
@@ -58,7 +57,7 @@ for line in cb:
 
 	result = re.search('''
 			(?:private|public|protected)\s # Scope decleration
-			(?:\S*?[^\s]\s)+?		   # up to 4 words
+			(?:\S*?[^\s]\s)*?		   # up to 4 words
 			(\S*?[^\s|;])				   # a word (captured)
 			(?:\s=|;)				# optional a space and an equals followd by anything
 										# a line-end character
@@ -145,12 +144,27 @@ python << EOF
 import re
 import vim
 
+highlightParamsAsGroup = 'Type' #Statement
+highlightVarAsGroup = 'Statement' #Underlined
+
+
+def escapeMagic(string):
+	charactersToEscape = '[]'
+
+	for char in charactersToEscape:
+		string = string.replace(char, '\\'+char)
+	return string
+
+'''
+This method searches the supplied line for a method definition
+and if one was found, it finds the method name and parameters
+'''
 def getMethodNameAndParamsFromLine(line):
 	foundValuesDict = {}
 
 	matchMethodDef = re.search(r'''
 			(?:private|public|protected)\s # Scope decleration
-			(?:\S*?[^\s]\s)+?		   # up to 4 words
+			(?:\S*?\s)*?		   # up to 4 words
 			(\S*?)\(				   # method name
 			(.*?)\)				   	   # inbetween the ()
 			(?:.*?{)
@@ -180,28 +194,31 @@ def getMethodNameAndParamsFromLine(line):
 
 	return foundValuesDict
 
+
 cb = vim.current.buffer
 methodsToHighlight = []
-parametersForMethod = {}
-methodNames = []
-endMatch = ''
 
 
 bracketCount = 0
 lookingForEndOf = None
 
+
+'''
+This loop finds the method start and end from the file
+'''
 for i, line in enumerate(cb):
 
-	methodWithParamsDict = getMethodNameAndParamsFromLine(line)
+	singleMethodDict = getMethodNameAndParamsFromLine(line)
 
 	if not lookingForEndOf:
-		if methodWithParamsDict and 'params' in methodWithParamsDict:
-			methodWithParamsDict['startLine'] = line
+		if singleMethodDict:
+			singleMethodDict['startLine'] = escapeMagic(line)
+			singleMethodDict['startLineIndex'] = i
 
 			bracketCount = 1
-			lookingForEndOf = methodWithParamsDict['methodName']
+			lookingForEndOf = singleMethodDict['methodName']
 
-			methodsToHighlight.append(methodWithParamsDict)
+			methodsToHighlight.append(singleMethodDict)
 
 	else:
 		oldBracketCount = bracketCount
@@ -209,33 +226,71 @@ for i, line in enumerate(cb):
 		openBracketsInLine = re.findall('(?!//.*){', line)
 		if openBracketsInLine:
 			bracketCount = bracketCount + len(openBracketsInLine)
-			#print "{ count:", count
 
 		closeBracketsInLine = re.findall('(?!//.*)}', line)
 		if closeBracketsInLine:
 			bracketCount = bracketCount - len(closeBracketsInLine)
-			#print "} count:", count
 
 		if bracketCount < oldBracketCount and oldBracketCount == 1:
 			for method in methodsToHighlight:
 				if method['methodName'] == lookingForEndOf:
 					method['endingLine'] = line
+					method['endingLineIndex'] = i
 			lookingForEndOf = None
 
+'''
+this loop searches the methods for defined variables
+'''
+for method in methodsToHighlight:
+	iStart = method['startLineIndex']
+	iEnd = method['endingLineIndex']
+
+	foundVars = []
+	for line in cb[iStart:iEnd]:
+		matchMethodDef = re.search(r'''
+				(?:^\s*?)				# Indented beginning of the line
+				(?!return)				# dont capture return statements
+				(?:\S+?\s)				# Class name
+				([A-Za-z_]*?[^;])				# variableName (captured)
+				(?:\s=|;)				# a space with an equals, or a line end
+			''', line, re.VERBOSE)
+
+		if matchMethodDef:
+			foundVars.append(matchMethodDef.group(1))
+
+	method['variables'] = foundVars
 
 
-
-
+'''
+The found methods and parameters are highlighted here
+'''
 for i, method in enumerate(methodsToHighlight):
-	print 'M: ', method
 
 	#Add every parameter to the matchGroup. Note: The group should only be contained
 	#inside another group (which will be the method)
 	hiParamsGroupName = 'parameter'+str(i)
 
-	for param in method['params']:
-		#Highlights the parameter, unless it is preceded by 'this.'
-		vim.command('syn match ' + hiParamsGroupName + ' "\(this\.\)\@<!\<' + param + '\>" contained')
+	if 'params' in method:
+		for param in method['params']:
+			#Highlights the parameter, unless it is preceded by 'this.'
+			vim.command('syn match ' + hiParamsGroupName + ' "\(this\.\)\@<!\<' + param + '\>" contained')
+
+	vim.command('hi def link ' + hiParamsGroupName + ' ' + highlightParamsAsGroup)
+
+
+	hiVarsGroupName = 'variable'+str(i)
+
+
+	if 'variables' in method:
+		for var in method['variables']:
+			#Highlights the parameter, unless it is preceded by 'this.'
+			vim.command('syn match ' + hiVarsGroupName + ' "\<' + var + '\>" contained')
+
+
+	vim.command('hi def link ' + hiVarsGroupName + ' ' + highlightVarAsGroup)
+
+
+
 
 
 
@@ -244,11 +299,8 @@ for i, method in enumerate(methodsToHighlight):
 	vim.command( 'syn region ' + hiMethodGroupName
 				+ ' start="^' + method['startLine'] + '"'
 				+ ' end=+^' + method['endingLine'] + '+'
-				+ ' contains=@javaTop,' + hiParamsGroupName + ',javaFields')
+				+ ' contains=@javaTop,' + hiParamsGroupName +','+ hiVarsGroupName + ',javaFields')
 
-	#vim.command('hi def link '+hiMethodGroupName+'	Statement ')
-	vim.command('hi def link ' + hiParamsGroupName + ' Statement')
-	#vim.command('syn cluster javaTop add=' + hiMethodGroupName)
 
 
 
@@ -263,48 +315,48 @@ call HighlightParams()
 "hi def link completeMethodB		Statement
 
 
-let methodWithParamsList=[]
-silent! %s/\v(private|public|protected)\s([_$a-zA-Z<>\[\]]{-}\s)*(\w{-}\((.{-})\))\zs/\=add(methodWithParamsList,submatch(3))[1:0]/g
-
-let i = 0
-for methodWithParams in methodWithParamsList
-	"Note: Because every method needs to highlight only their own fields,
-	"every match needs a unique match group (like javaParams1). That's what
-	"the 'i' is for.
-	let currentJavaParams = 'javaParams' . i
-	let currentCompleteMethod = 'completeMethod' . i
-
-	let paramsList = s:getParameterNames(s:getInsideBraces(methodWithParams))
-	"echo paramsList
-	
-
-	"Add every parameter to the matchGroup. Note: The group should only be contained
-	"inside another group (which will be the method)
-	for param in paramsList
-		"Highlights the parameter, unless it is preceded by 'this.'
-		execute 'syn match ' . currentJavaParams . ' "\(this\.\)\@<!\<' . param . '\>" contained'
-	endfor
-
-	let methodName = s:getMethodName(methodWithParams)
-
-	"This creates a region for this method only. The region starts with the
-	"method name (which is indented one length) and ends with the closing }
-	"The intentation is used to match the start&end and is exactly one indent
-	"execute 'syn region '.currentCompleteMethod.'  start=+^\v(\t| {' . &tabstop . '}).{-}' . methodName . '\(.{-}\).{-}\{+  end=+^\v(\t| {' . &tabstop . '})}+ contains=@javaTop,' . currentJavaParams . ',javaFields'
-
-	"DEBUG this highlighs the entire method-region for debugging
-	"hi def link completeMethod1		Statement 
-
-	" Highlight the javaParams as a 'Statement' Group. This is yellow with the
-	" solarised color scheme
-	"execute 'hi def link ' . currentJavaParams . '		Statement'
-
-	" DELETE ME Highlights keyword in entire file
-	" add highlighting inside the javaTop cluster
-	"execute 'syn cluster javaTop add=' . currentJavaParams
-
-	let i += 1
-endfor
+"let methodWithParamsList=[]
+"silent! %s/\v(private|public|protected)\s([_$a-zA-Z<>\[\]]{-}\s)*(\w{-}\((.{-})\))\zs/\=add(methodWithParamsList,submatch(3))[1:0]/g
+"
+"let i = 0
+"for methodWithParams in methodWithParamsList
+"	"Note: Because every method needs to highlight only their own fields,
+"	"every match needs a unique match group (like javaParams1). That's what
+"	"the 'i' is for.
+"	let currentJavaParams = 'javaParams' . i
+"	let currentCompleteMethod = 'completeMethod' . i
+"
+"	let paramsList = s:getParameterNames(s:getInsideBraces(methodWithParams))
+"	"echo paramsList
+"	
+"
+"	"Add every parameter to the matchGroup. Note: The group should only be contained
+"	"inside another group (which will be the method)
+"	for param in paramsList
+"		"Highlights the parameter, unless it is preceded by 'this.'
+"		execute 'syn match ' . currentJavaParams . ' "\(this\.\)\@<!\<' . param . '\>" contained'
+"	endfor
+"
+"	let methodName = s:getMethodName(methodWithParams)
+"
+"	"This creates a region for this method only. The region starts with the
+"	"method name (which is indented one length) and ends with the closing }
+"	"The intentation is used to match the start&end and is exactly one indent
+"	"execute 'syn region '.currentCompleteMethod.'  start=+^\v(\t| {' . &tabstop . '}).{-}' . methodName . '\(.{-}\).{-}\{+  end=+^\v(\t| {' . &tabstop . '})}+ contains=@javaTop,' . currentJavaParams . ',javaFields'
+"
+"	"DEBUG this highlighs the entire method-region for debugging
+"	"hi def link completeMethod1		Statement 
+"
+"	" Highlight the javaParams as a 'Statement' Group. This is yellow with the
+"	" solarised color scheme
+"	"execute 'hi def link ' . currentJavaParams . '		Statement'
+"
+"	" DELETE ME Highlights keyword in entire file
+"	" add highlighting inside the javaTop cluster
+"	"execute 'syn cluster javaTop add=' . currentJavaParams
+"
+"	let i += 1
+"endfor
 
 
 
