@@ -167,30 +167,48 @@ import re
 import vim
 
 cb = vim.current.buffer
-methods = []
+methodNames = []
 parametersForMethod = {}
+endMatch = ''
 for line in cb:
-	#silent! %s/\v(private|public|protected)\s([_$a-zA-Z<>\[\]]{-}\s)*(\w{-}\((.{-})\))\zs/\=add(methodWithParamsList,submatch(3))[1:0]/g
 
-	#(?:_?[A-Z]\S*?\s			# class name
-	#(\S*),\s?					# parameterName
-	#)*?
-	result = re.search(r'''
+
+	matchMethodDef = re.search(r'''
+			(\s*?)
 			(?:private|public|protected)\s # Scope decleration
 			(?:\S*?[^\s]\s)+?		   # up to 4 words
 			(\S*?)\(				   # method name
 			(.*?)\)				   	   # inbetween the ()
+			(?:.*?{)
 		''', line, re.VERBOSE)
-	if result:
-		methods.append(result.group(1))
+	if matchMethodDef:
+		indentation = matchMethodDef.group(1)
+		endMatch = indentation+'}'
+
+		methodName = matchMethodDef.group(2)
+		inbetweenBraces = matchMethodDef.group(3)
+
+		methodNames.append(methodName)
 
 		params = re.findall(r'''
-					.*?\s.*?,			# class name
-								# parameterName
-		''', result.group(2), re.VERBOSE);
+					\S*?\s		# class name
+					(\S*?)		# parameterName
+					,\s
+		''', inbetweenBraces, re.VERBOSE)
+
+		parametersForMethod[methodName] = params
 
 
-		print "params: ", params
+
+print "parametersForMethod: ", parametersForMethod
+
+hiGroupName = 'completeMethoda'
+currentMethodName = 'onTextChanged'
+params = ['start', 's']
+
+#vim.command( 'syn region '.hiGroupName.'  start=+^\v(\t| {4}).{-}' . methodName . '\(.{-}\).{-}\{+  end=+^\v(\t| {4})}+ contains=@javaTop,' . currentJavaParams . ',javaFields')
+vim.command( 'syn region '+hiGroupName+'  start=+public void onTextChanged(+  end=+something+')
+vim.command('hi def link completeMethoda		Statement ')
 
 
 #for result in allResults:
@@ -200,7 +218,7 @@ for line in cb:
 EOF
 endfunction
 
-"call HighlightParams()
+call HighlightParams()
 
 
 
