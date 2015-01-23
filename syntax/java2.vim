@@ -44,27 +44,6 @@ classEnd = len(cb)
 
 count = 0
 
-#for i, line in enumerate(cb):
-#	oldCount = count
-#	openBrackets = re.findall('(?!//.*){', line)
-#	if openBrackets:
-#		count = count + len(openBrackets)
-#		#print "{ count:", count
-#
-#	closeBrackets = re.findall('(?!//.*)}', line)
-#	if closeBrackets:
-#		count = count - len(closeBrackets)
-#		#print "} count:", count
-#
-#	if count > oldCount and oldCount == 0:
-#		classStart = i
-#		print "startingLine: ", i
-#
-#	if count < oldCount and oldCount == 1:
-#		classEnd = i
-#		print "classEnd: ", i
-
-
 
 for i, line in enumerate(cb):
 	result = re.search('.*class', line)
@@ -249,15 +228,27 @@ for i, line in enumerate(cb):
 
 for i, method in enumerate(methodsToHighlight):
 	print 'M: ', method
-	hiGroupName = 'completeMethod'+str(i)
 
-	#params = parametersForMethod[key]
+	#Add every parameter to the matchGroup. Note: The group should only be contained
+	#inside another group (which will be the method)
+	hiParamsGroupName = 'parameter'+str(i)
 
-	vim.command( 'syn region '+hiGroupName
+	for param in method['params']:
+		#Highlights the parameter, unless it is preceded by 'this.'
+		vim.command('syn match ' + hiParamsGroupName + ' "\(this\.\)\@<!\<' + param + '\>" contained')
+
+
+
+	hiMethodGroupName = 'completeMethod'+str(i)
+
+	vim.command( 'syn region ' + hiMethodGroupName
 				+ ' start="^' + method['startLine'] + '"'
-				+ ' end=+^' + method['endingLine'] + '+')
+				+ ' end=+^' + method['endingLine'] + '+'
+				+ ' contains=@javaTop,' + hiParamsGroupName + ',javaFields')
 
-	vim.command('hi def link '+hiGroupName+'	Statement ')
+	#vim.command('hi def link '+hiMethodGroupName+'	Statement ')
+	vim.command('hi def link ' + hiParamsGroupName + ' Statement')
+	#vim.command('syn cluster javaTop add=' + hiMethodGroupName)
 
 
 
