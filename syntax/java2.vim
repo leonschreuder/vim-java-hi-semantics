@@ -166,53 +166,100 @@ python << EOF
 import re
 import vim
 
-cb = vim.current.buffer
-methodNames = []
-parametersForMethod = {}
-endMatch = ''
-for line in cb:
-
+def getMethodNameAndParamsFromLine(line):
+	foundValuesDict = {}
 
 	matchMethodDef = re.search(r'''
-			(\s*?)
 			(?:private|public|protected)\s # Scope decleration
 			(?:\S*?[^\s]\s)+?		   # up to 4 words
 			(\S*?)\(				   # method name
 			(.*?)\)				   	   # inbetween the ()
 			(?:.*?{)
 		''', line, re.VERBOSE)
+
 	if matchMethodDef:
-		indentation = matchMethodDef.group(1)
-		endMatch = indentation+'}'
 
-		methodName = matchMethodDef.group(2)
-		inbetweenBraces = matchMethodDef.group(3)
+		methodName = matchMethodDef.group(1)
+		inbetweenBraces = matchMethodDef.group(2)
 
-		methodNames.append(methodName)
+		if len(inbetweenBraces) > 0:
+			paramsList = []
+			paramsGroups = re.split(',', inbetweenBraces)
+			for currentGroup in paramsGroups:
+				currentGroup = currentGroup.strip()
 
-		params = re.findall(r'''
-					\S*?\s		# class name
-					(\S*?)		# parameterName
-					,\s
-		''', inbetweenBraces, re.VERBOSE)
+				splitGroup = re.split('\s', currentGroup)
 
-		parametersForMethod[methodName] = params
+				paramsList.append(splitGroup[-1])
 
 
-
-print "parametersForMethod: ", parametersForMethod
-
-hiGroupName = 'completeMethoda'
-currentMethodName = 'onTextChanged'
-params = ['start', 's']
-
-#vim.command( 'syn region '.hiGroupName.'  start=+^\v(\t| {4}).{-}' . methodName . '\(.{-}\).{-}\{+  end=+^\v(\t| {4})}+ contains=@javaTop,' . currentJavaParams . ',javaFields')
-vim.command( 'syn region '+hiGroupName+'  start=+public void onTextChanged(+  end=+something+')
-vim.command('hi def link completeMethoda		Statement ')
+			foundValuesDict['params'] = paramsList
 
 
-#for result in allResults:
-#vim.command( 'syn match javaFields "\<' + result + '\>"')
+		foundValuesDict['methodName'] = methodName
+
+
+	return foundValuesDict
+
+cb = vim.current.buffer
+methodsToHighlight = []
+parametersForMethod = {}
+methodNames = []
+endMatch = ''
+
+
+bracketCount = 0
+lookingForEndOf = None
+
+for i, line in enumerate(cb):
+
+	methodWithParamsDict = getMethodNameAndParamsFromLine(line)
+
+	if not lookingForEndOf:
+		if methodWithParamsDict and 'params' in methodWithParamsDict:
+			methodWithParamsDict['startLine'] = line
+
+			bracketCount = 1
+			lookingForEndOf = methodWithParamsDict['methodName']
+
+			methodsToHighlight.append(methodWithParamsDict)
+
+	else:
+		oldBracketCount = bracketCount
+
+		openBracketsInLine = re.findall('(?!//.*){', line)
+		if openBracketsInLine:
+			bracketCount = bracketCount + len(openBracketsInLine)
+			#print "{ count:", count
+
+		closeBracketsInLine = re.findall('(?!//.*)}', line)
+		if closeBracketsInLine:
+			bracketCount = bracketCount - len(closeBracketsInLine)
+			#print "} count:", count
+
+		if bracketCount < oldBracketCount and oldBracketCount == 1:
+			for method in methodsToHighlight:
+				if method['methodName'] == lookingForEndOf:
+					method['endingLine'] = line
+			lookingForEndOf = None
+
+
+
+
+
+for i, method in enumerate(methodsToHighlight):
+	print 'M: ', method
+	hiGroupName = 'completeMethod'+str(i)
+
+	#params = parametersForMethod[key]
+
+	vim.command( 'syn region '+hiGroupName
+				+ ' start="^' + method['startLine'] + '"'
+				+ ' end=+^' + method['endingLine'] + '+')
+
+	vim.command('hi def link '+hiGroupName+'	Statement ')
+
+
 
 
 EOF
@@ -221,6 +268,8 @@ endfunction
 call HighlightParams()
 
 
+"syn region completeMethodB  start=+calcHeatRequirement(+  end=+)+
+"hi def link completeMethodB		Statement
 
 
 let methodWithParamsList=[]
@@ -250,14 +299,14 @@ for methodWithParams in methodWithParamsList
 	"This creates a region for this method only. The region starts with the
 	"method name (which is indented one length) and ends with the closing }
 	"The intentation is used to match the start&end and is exactly one indent
-	execute 'syn region '.currentCompleteMethod.'  start=+^\v(\t| {' . &tabstop . '}).{-}' . methodName . '\(.{-}\).{-}\{+  end=+^\v(\t| {' . &tabstop . '})}+ contains=@javaTop,' . currentJavaParams . ',javaFields'
+	"execute 'syn region '.currentCompleteMethod.'  start=+^\v(\t| {' . &tabstop . '}).{-}' . methodName . '\(.{-}\).{-}\{+  end=+^\v(\t| {' . &tabstop . '})}+ contains=@javaTop,' . currentJavaParams . ',javaFields'
 
 	"DEBUG this highlighs the entire method-region for debugging
 	"hi def link completeMethod1		Statement 
 
 	" Highlight the javaParams as a 'Statement' Group. This is yellow with the
 	" solarised color scheme
-	execute 'hi def link ' . currentJavaParams . '		Statement'
+	"execute 'hi def link ' . currentJavaParams . '		Statement'
 
 	" DELETE ME Highlights keyword in entire file
 	" add highlighting inside the javaTop cluster
