@@ -56,11 +56,11 @@ allResults = []
 for line in cb:
 
 	result = re.search('''
-			(?:private|public|protected)\s # Scope decleration
-			(?:\S*?[^\s]\s)*?		   # up to 4 words
-			(\S*?[^\s|;])				   # a word (captured)
-			(?:\s=|;)				# optional a space and an equals followd by anything
-										# a line-end character
+			(?:private|public|protected)\s	# Scope decleration
+			(?:\S*?\s)*?		   			# up to 4 words
+			(\S*?[^\s|;])					# a word (captured)
+			(?:\s?=|;)						# optional a space and an equals followd by anything
+											# a line-end character
 		''', line, re.VERBOSE)
 	if result:
 		allResults.append(result.group(1))
@@ -223,11 +223,17 @@ for i, line in enumerate(cb):
 	else:
 		oldBracketCount = bracketCount
 
-		openBracketsInLine = re.findall('(?!//.*){', line)
+		currentLine = line
+
+		lineCommentSplit = re.split("//", line)
+		if lineCommentSplit:
+			currentLine = lineCommentSplit[0]
+
+		openBracketsInLine = re.findall('{', currentLine)
 		if openBracketsInLine:
 			bracketCount = bracketCount + len(openBracketsInLine)
 
-		closeBracketsInLine = re.findall('(?!//.*)}', line)
+		closeBracketsInLine = re.findall('}', currentLine)
 		if closeBracketsInLine:
 			bracketCount = bracketCount - len(closeBracketsInLine)
 
@@ -249,10 +255,13 @@ for method in methodsToHighlight:
 	for line in cb[iStart:iEnd]:
 		matchMethodDef = re.search(r'''
 				(?:^\s*?)				# Indented beginning of the line
-				(?!return)				# dont capture return statements
-				(?:\S+?\s)				# Class name
-				([A-Za-z_]*?[^;])				# variableName (captured)
-				(?:\s=|;)				# a space with an equals, or a line end
+				(?!return)				# don't capture return statements
+				(?:for\s*?)?			# Indented beginning of the line
+				(?:\S+?)				# Class name
+				(?:\s+?)				# 1 or more spaces
+				([A-Za-z_]*?[^;])		# variableName (captured)
+				(?:\s*?)				# 0 or more spaces
+				(?:=|;|:)				# an equals, line end or colon (in for loops)
 			''', line, re.VERBOSE)
 
 		if matchMethodDef:
