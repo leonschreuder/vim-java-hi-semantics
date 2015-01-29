@@ -256,6 +256,7 @@ for method in methodsToHighlight:
 		matchMethodDef = re.search(r'''
 				(?:^\s*?)				# Indented beginning of the line
 				(?!return)				# don't capture return statements
+				(?!//)					# don't capture comments
 				(?:for\s*?)?			# Indented beginning of the line
 				(?:\S+?)				# Class name
 				(?:\s+?)				# 1 or more spaces
