@@ -73,24 +73,6 @@ endfunction
 
 call HighlightFields()
 
-"let fieldNamesList=[]
-" Matches field definitions with a value (with an equals sign)
-"silent! %s/\v(private|public|protected)\s(\S{-}\s)*(\S{-})\s\=\zs/\=add(fieldNamesList,submatch(3))[1:0]/g
-"echo fieldNamesList
-
-
-" Matches field definitions without a value (no equals sign)
-" Every value is specified, as not to match lines that DO contain an equals sign...
-"silent! %s/\v(private|public|protected)\s([a-zA-Z0-9_\.\[\]<>]{-}\s)*(\S{-});\zs/\=add(fieldNamesList,submatch(3))[1:0]/g
-"echo fieldNamesList
-
-" Adds every found fieldName to the 'javaFields' match group
-"for fieldName in fieldNamesList
-	"if fieldName != ""
-		""execute 'syn match javaFields "\<' . fieldName . '\>"'
-	"endif
-"endfor
-
 " add highlighting inside the javaTop cluster
 syn cluster javaTop add=javaFields
 
